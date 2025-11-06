@@ -2,9 +2,11 @@ import React, { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { UserIcon, LockClosedIcon } from "@heroicons/react/24/outline";
 import { PinInput } from "@/components/ui/pin-input";
+import { useNavigate } from "react-router-dom";
 
 export const Login = () => {
   const { loginWithToken } = useAuth(); // assumes login() sets user session
+  const navigate = useNavigate();
 
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
@@ -18,12 +20,14 @@ export const Login = () => {
     setError("");
 
     try {
-      await fetch("https://api.new.techember.in/api/auth/user-register", {
+      const res = await fetch("https://api.new.techember.in/api/admin/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phone }),
       });
 
+      const data = await res.json();
+      console.log(data.Otp);
       setScreen("otp");
     } catch {
       setError("Failed to send OTP. Try again.");
@@ -38,7 +42,7 @@ export const Login = () => {
     setError("");
 
     try {
-      const res = await fetch("https://api.new.techember.in/api/auth/user-register", {
+      const res = await fetch("https://api.new.techember.in/api/admin/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phone, otp }),
@@ -48,10 +52,11 @@ export const Login = () => {
 
       const data = await res.json();
       // ✅ Call your existing login logic (phone-only session)
-      await loginWithToken(data.token, data.user); 
+      console.log("HERE");
+      await loginWithToken(data.AccessToken);
+      console.log("HERE@");
+      navigate("/"); 
 
-      // Redirect to dashboard or refresh
-      window.location.reload();
     } catch {
       setError("Invalid OTP. Try again.");
       setOtp("");

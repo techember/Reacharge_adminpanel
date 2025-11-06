@@ -86,32 +86,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   // ✅ OTP TOKEN LOGIN SUPPORT
-  const loginWithToken = async (token: string, userData?: Partial<User>) => {
-    localStorage.setItem("token", token);
+  const loginWithToken = async (token: string) => {
+  // Save token in local storage
+  localStorage.setItem("token", token);
 
-    if (userData) {
-      // If backend returned user details along with token
-      const finalUser = {
-        id: userData.id || "",
-        name: userData.name || "Admin User",
-        email: userData.email || "",
-        avatar:
-          userData.avatar ||
-          "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e",
-        role: (userData.role as "admin" | "super-admin") || "admin",
-      };
-      setUser(finalUser);
-      localStorage.setItem("admin_user", JSON.stringify(finalUser));
-    } else {
-      // If backend only returned token, fetch user profile afterward
-      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/me`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const profile = await res.json();
-      setUser(profile);
-      localStorage.setItem("admin_user", JSON.stringify(profile));
-    }
+  // Set a simple admin user (since backend does not provide profile)
+  const finalUser = {
+    id: "",
+    name: "Admin User",
+    email: "",
+    avatar: "https://ui-avatars.com/api/?name=Admin+User",
+    role: "admin" as "admin" | "super-admin",
   };
+
+  setUser(finalUser);
+  localStorage.setItem("admin_user", JSON.stringify(finalUser));
+};
 
   const logout = () => {
     setUser(null);
