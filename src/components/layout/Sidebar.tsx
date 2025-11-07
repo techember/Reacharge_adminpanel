@@ -47,25 +47,20 @@ type NavItem = {
 const navigation: NavItem[] = [
   { name: 'Dashboard', href: '/', icon: HomeIcon },
   { name: 'User Management', href: '/users', icon: UsersIcon },
-  { name: 'KYC Management', href: '/kyc', icon: DocumentCheckIcon },
   { name: 'Wallet Management', href: '/wallet', icon: WalletIcon },
   { name: 'Transactions', href: '/transactions', icon: CreditCardIcon },
-  { name: 'Service Providers', href: '/serviceproviders', icon: Wrench },
-  { name: 'Travel Bookings', href: '/travel-bookings', icon: Wrench },
   { name: 'Commission Settings', href: '/commission', icon: CogIcon },
   {
     name: 'Master',
     icon: Squares2X2Icon,
     children: [
       { name: 'Service Control', href: '/master/services', icon: WrenchScrewdriverIcon },
-      { name: 'Games', href: '/master/games', icon: Squares2X2Icon },
       { name: 'Banner', href: '/master/banner', icon: PhotoIcon }
     ]
   },
   { name: 'Reports', href: '/reports', icon: ChartBarIcon },
   { name: 'Referral & Cashback', href: '/referral', icon: UserPlusIcon },
   { name: 'Support & Feedback', href: '/support', icon: ChatBubbleLeftRightIcon },
-  { name: 'CMS Management', href: '/cms', icon: DocumentTextIcon },
   { name: 'Notifications', href: '/notifications', icon: BellIcon },
   { name: 'Admin Profile', href: '/profile', icon: UserIcon },
   { name: 'Affiliate Store', href: '/affiliate-store', icon: BuildingStorefrontIcon }

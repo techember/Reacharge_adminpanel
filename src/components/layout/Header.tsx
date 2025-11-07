@@ -17,7 +17,6 @@ export const Header: React.FC<HeaderProps> = ({ title, onSidebarToggle, sidebarO
 
   // Mock notification data
   const notifications = [
-    { id: 1, title: 'New KYC Request', message: 'John Doe submitted KYC documents', time: '2 min ago', unread: true },
     { id: 2, title: 'Wallet Top-up', message: 'User U002 added ₹500 to wallet', time: '15 min ago', unread: true },
     { id: 3, title: 'Transaction Failed', message: 'Mobile recharge failed for U003', time: '1 hour ago', unread: false }
   ];

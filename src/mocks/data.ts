@@ -5,13 +5,13 @@ export const mockUsers = [
     mobile: '+1234567890',
     email: 'john.doe@example.com',
     kycStatus: 'verified',
-    walletBalance: 1250.50,
+    walletBalance: 1250.5,
     createdAt: '2024-01-15T10:30:00Z',
     status: 'active',
     referredBy: null,
     ipAddress: '192.168.1.100',
     address: '123 Main St, New York, NY 10001',
-    mpin: '1234'
+    mpin: '1234',
   },
   {
     id: 'U002',
@@ -25,7 +25,7 @@ export const mockUsers = [
     referredBy: 'U001',
     ipAddress: '192.168.1.101',
     address: '456 Oak Ave, Los Angeles, CA 90210',
-    mpin: '5678'
+    mpin: '5678',
   },
   {
     id: 'U003',
@@ -33,13 +33,13 @@ export const mockUsers = [
     mobile: '+1234567892',
     email: 'mike.johnson@example.com',
     kycStatus: 'rejected',
-    walletBalance: 0.00,
+    walletBalance: 0.0,
     createdAt: '2024-01-17T09:15:00Z',
     status: 'suspended',
     referredBy: null,
     ipAddress: '192.168.1.102',
     address: '789 Pine Rd, Chicago, IL 60601',
-    mpin: '9012'
+    mpin: '9012',
   },
   {
     id: 'U004',
@@ -53,7 +53,7 @@ export const mockUsers = [
     referredBy: 'U002',
     ipAddress: '192.168.1.103',
     address: '321 Elm St, Houston, TX 77001',
-    mpin: '3456'
+    mpin: '3456',
   },
   {
     id: 'U005',
@@ -61,40 +61,17 @@ export const mockUsers = [
     mobile: '+1234567894',
     email: 'david.brown@example.com',
     kycStatus: 'pending',
-    walletBalance: 500.00,
+    walletBalance: 500.0,
     createdAt: '2024-01-19T11:30:00Z',
     status: 'active',
     referredBy: null,
     ipAddress: '192.168.1.104',
     address: '654 Maple Dr, Phoenix, AZ 85001',
-    mpin: '7890'
-  }
+    mpin: '7890',
+  },
 ];
 
-export const mockKycRequests = [
-  {
-    id: 'KYC001',
-    userId: 'U002',
-    userName: 'Jane Smith',
-    documentType: 'Aadhaar',
-    documentNumber: '1234-5678-9012',
-    documentUrl: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=300',
-    status: 'pending',
-    submittedAt: '2024-01-16T10:30:00Z',
-    comments: ''
-  },
-  {
-    id: 'KYC002',
-    userId: 'U001',
-    userName: 'John Doe',
-    documentType: 'PAN Card',
-    documentNumber: 'ABCDE1234F',
-    documentUrl: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=300',
-    status: 'verified',
-    submittedAt: '2024-01-15T14:20:00Z',
-    comments: 'All documents verified successfully'
-  }
-];
+
 
 export const mockTransactions = [
   {
@@ -103,10 +80,10 @@ export const mockTransactions = [
     userName: 'John Doe',
     type: 'recharge',
     service: 'Mobile Recharge',
-    amount: 99.00,
+    amount: 99.0,
     status: 'success',
     commission: 2.97,
-    createdAt: '2024-01-18T09:15:00Z'
+    createdAt: '2024-01-18T09:15:00Z',
   },
   {
     id: 'TXN002',
@@ -114,11 +91,11 @@ export const mockTransactions = [
     userName: 'Jane Smith',
     type: 'bill_payment',
     service: 'Electricity Bill',
-    amount: 1500.00,
+    amount: 1500.0,
     status: 'pending',
-    commission: 15.00,
-    createdAt: '2024-01-18T10:30:00Z'
-  }
+    commission: 15.0,
+    createdAt: '2024-01-18T10:30:00Z',
+  },
 ];
 
 export const mockWalletRequests = [
@@ -126,18 +103,50 @@ export const mockWalletRequests = [
     id: 'WR001',
     userId: 'U002',
     userName: 'Jane Smith',
-    amount: 2000.00,
+    amount: 2000.0,
     status: 'pending',
     requestedAt: '2024-01-18T11:00:00Z',
-    paymentMode: 'UPI'
-  }
+    paymentMode: 'UPI',
+  },
 ];
 
+// ✅ Fixed Section: Added 4 dropdown sub-services
 export const mockCommissionSettings = [
-  { service: 'Mobile Recharge', commission: 3.0, unit: '%' as const, minAmount: 10, maxAmount: 500 },
-  { service: 'DTH Recharge', commission: 2.5, unit: '%' as const, minAmount: 100, maxAmount: 2000 },
-  { service: 'Electricity Bill', commission: 1.0, unit: '%' as const, minAmount: 100, maxAmount: 10000 },
-  { service: 'Travel Booking', commission: 50, unit: 'fixed' as const, minAmount: 1000, maxAmount: 50000 }
+  {
+    service: 'Mobile Recharge',
+    commission: 3.0,
+    unit: '%' as const,
+    minAmount: 10,
+    maxAmount: 500,
+    subServices: [
+      { name: 'Jio', commission: 3.0, unit: '%' as const, minAmount: 10, maxAmount: 500 },
+      { name: 'Airtel', commission: 2.5, unit: '%' as const, minAmount: 50, maxAmount: 2000 },
+      { name: 'BSNL', commission: 2.0, unit: '%' as const, minAmount: 20, maxAmount: 1000 },
+      { name: 'Vi', commission: 1.5, unit: '%' as const, minAmount: 10, maxAmount: 500 },
+    ],
+  },
+  {
+    service: 'DTH Recharge',
+    commission: 2.5,
+    unit: '%' as const,
+    minAmount: 100,
+    maxAmount: 2000,
+    subServices: [
+      { name: 'Tata Play', commission: 2.5, unit: '%' as const, minAmount: 100, maxAmount: 2000 },
+      { name: 'Airtel DTH', commission: 2.0, unit: '%' as const, minAmount: 100, maxAmount: 2000 },
+      { name: 'Dish TV', commission: 1.8, unit: '%' as const, minAmount: 100, maxAmount: 2000 },
+      { name: 'Sun Direct', commission: 2.2, unit: '%' as const, minAmount: 100, maxAmount: 2000 },
+      { name: 'Videocone', commission: 2.2, unit: '%' as const, minAmount: 100, maxAmount: 2000 },
+    ],
+  },
+  {
+    service: 'Electricity Bill',
+    commission: 1.0,
+    unit: '%' as const,
+    minAmount: 100,
+    maxAmount: 10000,
+  },
+  
 ];
 
 export const mockReferrals = [
@@ -147,10 +156,10 @@ export const mockReferrals = [
     referrerName: 'John Doe',
     refereeId: 'U002',
     refereeName: 'Jane Smith',
-    bonus: 50.00,
+    bonus: 50.0,
     status: 'credited',
-    createdAt: '2024-01-16T15:30:00Z'
-  }
+    createdAt: '2024-01-16T15:30:00Z',
+  },
 ];
 
 export const mockSupportTickets = [
@@ -163,19 +172,19 @@ export const mockSupportTickets = [
     status: 'open' as const,
     priority: 'high' as const,
     createdAt: '2024-01-18T12:00:00Z',
-    response: undefined
-  }
+    response: undefined,
+  },
 ];
 
 export const mockDashboardStats = {
   totalUsers: 15420,
   totalTransactions: 89340,
-  totalRevenue: 245680.50,
+  totalRevenue: 245680.5,
   pendingKyc: 23,
   userGrowth: 12.5,
   transactionGrowth: 8.3,
   revenueGrowth: 15.7,
-  kycGrowth: -5.2
+  kycGrowth: -5.2,
 };
 
 export const mockChartData = {
@@ -185,7 +194,7 @@ export const mockChartData = {
     { month: 'Mar', value: 15000 },
     { month: 'Apr', value: 25000 },
     { month: 'May', value: 22000 },
-    { month: 'Jun', value: 30000 }
+    { month: 'Jun', value: 30000 },
   ],
   walletLoads: [
     { day: 'Mon', amount: 45000 },
@@ -194,6 +203,6 @@ export const mockChartData = {
     { day: 'Thu', amount: 61000 },
     { day: 'Fri', amount: 55000 },
     { day: 'Sat', amount: 67000 },
-    { day: 'Sun', amount: 43000 }
-  ]
+    { day: 'Sun', amount: 43000 },
+  ],
 };
