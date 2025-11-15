@@ -120,9 +120,9 @@ export const mockCommissionSettings = [
     maxAmount: 500,
     subServices: [
       { name: 'Jio', commission: 3.0, unit: '%' as const, minAmount: 10, maxAmount: 500 },
-      { name: 'Airtel', commission: 2.5, unit: '%' as const, minAmount: 50, maxAmount: 2000 },
-      { name: 'BSNL', commission: 2.0, unit: '%' as const, minAmount: 20, maxAmount: 1000 },
-      { name: 'Vi', commission: 1.5, unit: '%' as const, minAmount: 10, maxAmount: 500 },
+      { name: 'Airtel', commission: 2.8, unit: '%' as const, minAmount: 10, maxAmount: 1000 },
+      { name: 'BSNL', commission: 2.5, unit: '%' as const, minAmount: 10, maxAmount: 800 },
+      { name: 'Vi', commission: 2.7, unit: '%' as const, minAmount: 10, maxAmount: 500 },
     ],
   },
   {
@@ -136,7 +136,7 @@ export const mockCommissionSettings = [
       { name: 'Airtel DTH', commission: 2.0, unit: '%' as const, minAmount: 100, maxAmount: 2000 },
       { name: 'Dish TV', commission: 1.8, unit: '%' as const, minAmount: 100, maxAmount: 2000 },
       { name: 'Sun Direct', commission: 2.2, unit: '%' as const, minAmount: 100, maxAmount: 2000 },
-      { name: 'Videocone', commission: 2.2, unit: '%' as const, minAmount: 100, maxAmount: 2000 },
+      { name: 'Videocon D2H', commission: 2.1, unit: '%' as const, minAmount: 100, maxAmount: 2000 },
     ],
   },
   {

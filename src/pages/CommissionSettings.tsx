@@ -37,15 +37,28 @@ export const CommissionSettings = () => {
 
   // === Fetch settings ===
   useEffect(() => {
-    if (useMock) {
-      setSettings(mockCommissionSettings);
-    } else {
-      axios
-        .get(`${apiBaseUrl}/commission-settings`)
-        .then((res) => setSettings(res.data))
-        .catch((err) => console.error('Failed to fetch settings', err));
-    }
-  }, [useMock, apiBaseUrl]);
+  if (useMock) {
+    setSettings(mockCommissionSettings);
+  } else {
+    axios
+      .get(`${apiBaseUrl}/commission-settings`)
+      .then((res) => {
+        if (res.data && res.data.length > 0) {
+          // ✅ if backend actually returns something, use it
+          setSettings(res.data);
+        } else {
+          // ✅ fallback to mock when backend is empty
+          setSettings(mockCommissionSettings);
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to fetch settings, using mock', err);
+        // ✅ fallback to mock on error
+        setSettings(mockCommissionSettings);
+      });
+  }
+}, [useMock, apiBaseUrl]);
+
 
   // === Edit handlers ===
   const startEdit = (id: string, data: any) => {
@@ -60,22 +73,26 @@ export const CommissionSettings = () => {
 
   const saveEdit = (isSubService = false, parentService?: string) => {
     if (!editForm || !editingId) return;
+
     setSettings((prev) =>
       prev.map((service) => {
+        // Parent service edit
         if (!isSubService && service.service === editingId) {
           return editForm;
         }
+
+        // Sub-service edit
         if (isSubService && service.service === parentService) {
-          return {
-            ...service,
-            subServices: service.subServices?.map((sub) =>
-              `${parentService}-${sub.name}` === editingId ? editForm : sub
-            ),
-          };
+          const updatedSubs = service.subServices?.map((sub) =>
+            `${parentService}-${sub.name}` === editingId ? editForm : sub
+          );
+          return { ...service, subServices: updatedSubs };
         }
+
         return service;
       })
     );
+
     setEditingId(null);
     setEditForm(null);
   };
@@ -137,76 +154,52 @@ export const CommissionSettings = () => {
                         )}
                       </td>
 
-                      <td className="p-3">
-                        {editingId === setting.service ? (
-                          <input
-                            type="number"
-                            value={editForm?.commission || 0}
-                            onChange={(e) =>
-                              updateEditForm(
-                                'commission',
-                                parseFloat(e.target.value) || 0
+                      {/* Parent service edit cells */}
+                      {['commission', 'unit', 'minAmount', 'maxAmount'].map(
+                        (field) => (
+                          <td className="p-3" key={field}>
+                            {editingId === setting.service ? (
+                              field === 'unit' ? (
+                                <select
+                                  value={editForm?.unit || '%'}
+                                  onChange={(e) =>
+                                    updateEditForm(
+                                      'unit',
+                                      e.target.value as '%' | 'fixed'
+                                    )
+                                  }
+                                  className="p-1 text-sm border border-border rounded"
+                                >
+                                  <option value="%">Percentage (%)</option>
+                                  <option value="fixed">Fixed (₹)</option>
+                                </select>
+                              ) : (
+                                <input
+                                  type="number"
+                                  value={editForm?.[field] || 0}
+                                  onChange={(e) =>
+                                    updateEditForm(
+                                      field,
+                                      parseFloat(e.target.value) || 0
+                                    )
+                                  }
+                                  className="w-20 p-1 text-sm border border-border rounded"
+                                />
                               )
-                            }
-                            className="w-20 p-1 text-sm border border-border rounded"
-                          />
-                        ) : (
-                          <span>{setting.commission}</span>
-                        )}
-                      </td>
-
-                      <td className="p-3">
-                        {editingId === setting.service ? (
-                          <select
-                            value={editForm?.unit || '%'}
-                            onChange={(e) =>
-                              updateEditForm('unit', e.target.value as '%' | 'fixed')
-                            }
-                            className="p-1 text-sm border border-border rounded"
-                          >
-                            <option value="%">Percentage (%)</option>
-                            <option value="fixed">Fixed (₹)</option>
-                          </select>
-                        ) : (
-                          <span>{setting.unit === '%' ? 'Percentage' : 'Fixed'}</span>
-                        )}
-                      </td>
-
-                      <td className="p-3">
-                        {editingId === setting.service ? (
-                          <input
-                            type="number"
-                            value={editForm?.minAmount || 0}
-                            onChange={(e) =>
-                              updateEditForm(
-                                'minAmount',
-                                parseFloat(e.target.value) || 0
-                              )
-                            }
-                            className="w-20 p-1 text-sm border border-border rounded"
-                          />
-                        ) : (
-                          <span>₹{setting.minAmount}</span>
-                        )}
-                      </td>
-
-                      <td className="p-3">
-                        {editingId === setting.service ? (
-                          <input
-                            type="number"
-                            value={editForm?.maxAmount || 0}
-                            onChange={(e) =>
-                              updateEditForm(
-                                'maxAmount',
-                                parseFloat(e.target.value) || 0
-                              )
-                            }
-                            className="w-20 p-1 text-sm border border-border rounded"
-                          />
-                        ) : (
-                          <span>₹{setting.maxAmount}</span>
-                        )}
-                      </td>
+                            ) : (
+                              <span>
+                                {field === 'unit'
+                                  ? setting.unit === '%'
+                                    ? 'Percentage'
+                                    : 'Fixed'
+                                  : field === 'commission'
+                                  ? setting[field]
+                                  : `₹${setting[field]}`}
+                              </span>
+                            )}
+                          </td>
+                        )
+                      )}
 
                       <td className="p-3 text-center">
                         {editingId === setting.service ? (
@@ -243,89 +236,71 @@ export const CommissionSettings = () => {
                       setting.subServices?.map((sub) => (
                         <tr
                           key={sub.name}
-                          className="bg-muted/10 border-t hover:bg-muted/20"
+                          className="bg-muted/10 border-t hover:bg-muted/20 grid grid-cols-6 items-center"
+                          style={{
+                            gridTemplateColumns:
+                              '1.5fr 1fr 1fr 1fr 1fr 0.5fr',
+                          }}
                         >
-                          <td className="pl-10 text-sm font-medium text-gray-800">
+                          <div className="pl-10 text-sm font-medium text-gray-800">
                             {sub.name}
-                          </td>
+                          </div>
 
-                          <td className="p-3">
-                            {editingId === `${setting.service}-${sub.name}` ? (
-                              <input
-                                type="number"
-                                value={editForm?.commission || 0}
-                                onChange={(e) =>
-                                  updateEditForm(
-                                    'commission',
-                                    parseFloat(e.target.value) || 0
+                          {['commission', 'unit', 'minAmount', 'maxAmount'].map(
+                            (field) => (
+                              <div className="p-3" key={field}>
+                                {editingId ===
+                                `${setting.service}-${sub.name}` ? (
+                                  field === 'unit' ? (
+                                    <select
+                                      value={editForm?.unit || '%'}
+                                      onChange={(e) =>
+                                        updateEditForm(
+                                          'unit',
+                                          e.target.value as '%' | 'fixed'
+                                        )
+                                      }
+                                      className="p-1 text-sm border border-border rounded"
+                                    >
+                                      <option value="%">Percentage (%)</option>
+                                      <option value="fixed">Fixed (₹)</option>
+                                    </select>
+                                  ) : (
+                                    <input
+                                      type="number"
+                                      value={editForm?.[field] || 0}
+                                      onChange={(e) =>
+                                        updateEditForm(
+                                          field,
+                                          parseFloat(e.target.value) || 0
+                                        )
+                                      }
+                                      className="w-20 p-1 text-sm border border-border rounded"
+                                    />
                                   )
-                                }
-                                className="w-20 p-1 text-sm border border-border rounded"
-                              />
-                            ) : (
-                              <span>{sub.commission}</span>
-                            )}
-                          </td>
+                                ) : (
+                                  <span>
+                                    {field === 'unit'
+                                      ? sub.unit === '%'
+                                        ? 'Percentage'
+                                        : 'Fixed'
+                                      : field === 'commission'
+                                      ? sub[field]
+                                      : `₹${sub[field]}`}
+                                  </span>
+                                )}
+                              </div>
+                            )
+                          )}
 
-                          <td className="p-3">
-                            {editingId === `${setting.service}-${sub.name}` ? (
-                              <select
-                                value={editForm?.unit || '%'}
-                                onChange={(e) =>
-                                  updateEditForm('unit', e.target.value as '%' | 'fixed')
-                                }
-                                className="p-1 text-sm border border-border rounded"
-                              >
-                                <option value="%">Percentage (%)</option>
-                                <option value="fixed">Fixed (₹)</option>
-                              </select>
-                            ) : (
-                              <span>{sub.unit === '%' ? 'Percentage' : 'Fixed'}</span>
-                            )}
-                          </td>
-
-                          <td className="p-3">
-                            {editingId === `${setting.service}-${sub.name}` ? (
-                              <input
-                                type="number"
-                                value={editForm?.minAmount || 0}
-                                onChange={(e) =>
-                                  updateEditForm(
-                                    'minAmount',
-                                    parseFloat(e.target.value) || 0
-                                  )
-                                }
-                                className="w-20 p-1 text-sm border border-border rounded"
-                              />
-                            ) : (
-                              <span>₹{sub.minAmount}</span>
-                            )}
-                          </td>
-
-                          <td className="p-3">
-                            {editingId === `${setting.service}-${sub.name}` ? (
-                              <input
-                                type="number"
-                                value={editForm?.maxAmount || 0}
-                                onChange={(e) =>
-                                  updateEditForm(
-                                    'maxAmount',
-                                    parseFloat(e.target.value) || 0
-                                  )
-                                }
-                                className="w-20 p-1 text-sm border border-border rounded"
-                              />
-                            ) : (
-                              <span>₹{sub.maxAmount}</span>
-                            )}
-                          </td>
-
-                          {/* === Fixed Edit Buttons for Sub-services === */}
-                          <td className="text-right pr-4">
-                            {editingId === `${setting.service}-${sub.name}` ? (
+                          <div className="text-right pr-4">
+                            {editingId ===
+                            `${setting.service}-${sub.name}` ? (
                               <div className="flex gap-2 justify-end">
                                 <button
-                                  onClick={() => saveEdit(true, setting.service)}
+                                  onClick={() =>
+                                    saveEdit(true, setting.service)
+                                  }
                                   className="p-1 text-green-600 hover:bg-green-100 rounded transition"
                                   title="Save"
                                 >
@@ -342,7 +317,10 @@ export const CommissionSettings = () => {
                             ) : (
                               <button
                                 onClick={() =>
-                                  startEdit(`${setting.service}-${sub.name}`, sub)
+                                  startEdit(
+                                    `${setting.service}-${sub.name}`,
+                                    sub
+                                  )
                                 }
                                 className="p-1 text-blue-600 hover:bg-blue-100 rounded transition"
                                 title="Edit Sub-Service"
@@ -350,7 +328,7 @@ export const CommissionSettings = () => {
                                 <PencilIcon className="h-4 w-4" />
                               </button>
                             )}
-                          </td>
+                          </div>
                         </tr>
                       ))}
                   </React.Fragment>

@@ -18,17 +18,12 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ title, children }) => 
 
   useKeyboardShortcuts({
     onEscape: closeSidebar,
-    onToggleSidebar: toggleSidebar
+    onToggleSidebar: toggleSidebar,
   });
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header 
-        title={title}
-        onSidebarToggle={toggleSidebar}
-        sidebarOpen={sidebarOpen}
-      />
-      
+    <div className="flex h-screen bg-[hsl(var(--background))] text-[hsl(var(--foreground))] overflow-hidden">
+      {/* Sidebar */}
       <Sidebar
         isOpen={sidebarOpen}
         isCollapsed={sidebarCollapsed}
@@ -36,16 +31,24 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ title, children }) => 
         onToggleCollapsed={toggleCollapsed}
       />
 
-      {/* Main Content */}
-      <main 
-        className={`transition-all duration-300 ${
-          sidebarCollapsed ? 'lg:ml-20' : 'lg:ml-72'
-        } pt-0`}
+      {/* Main Content Area */}
+      <div
+        className={`flex flex-col flex-1 transition-all duration-300 
+          ${sidebarCollapsed ? 'lg:ml-20' : 'lg:ml-64'}
+        `}
       >
-        <div className="admin-scrollbar overflow-auto">
+        {/* Header */}
+        <Header
+          title={title}
+          onSidebarToggle={toggleSidebar}
+          sidebarOpen={sidebarOpen}
+        />
+
+        {/* Scrollable Page Content */}
+        <main className="flex-1 overflow-y-auto admin-scrollbar p-6 bg-[hsl(var(--background))]">
           {children}
-        </div>
-      </main>
+        </main>
+      </div>
     </div>
   );
 };

@@ -48,13 +48,11 @@ const navigation: NavItem[] = [
   { name: 'Dashboard', href: '/', icon: HomeIcon },
   { name: 'User Management', href: '/users', icon: UsersIcon },
   { name: 'Wallet Management', href: '/wallet', icon: WalletIcon },
-  { name: 'Transactions', href: '/transactions', icon: CreditCardIcon },
   { name: 'Commission Settings', href: '/commission', icon: CogIcon },
   {
     name: 'Master',
     icon: Squares2X2Icon,
     children: [
-      { name: 'Service Control', href: '/master/services', icon: WrenchScrewdriverIcon },
       { name: 'Banner', href: '/master/banner', icon: PhotoIcon }
     ]
   },
