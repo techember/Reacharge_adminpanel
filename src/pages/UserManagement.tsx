@@ -49,18 +49,20 @@ export const UserManagement = () => {
           "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2OGQwYjRmOTczZTFkMTc3M2Q0MmQ1MjEiLCJpYXQiOjE3NjI5MzEwOTJ9.iqzXVR7p9u0yPOvUq_Zi7l6RnPHjhn4SPsKsi4MUdQU";
 
         const res = await fetch(`https://api.new.techember.in/api/user/list`, {
-          method: "GET",
+          method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
+            'token': `${token}`,
           },
+          body: JSON.stringify({})
         });
-
         if (!res.ok) throw new Error("Failed to fetch users");
 
-        const data = await res.json();
-        console.log("User list:", data);
-        setUsers(data.data || data);
+        const json = await res.json();
+        console.log("User list:", json);
+        const userList = json?.Data?.data ?? [];
+ 
+        setUsers(userList);
       } catch (error) {
         console.error("Error fetching users:", error);
         toast({
@@ -77,8 +79,7 @@ export const UserManagement = () => {
   }, []);
 
   // ✅ Filtering, sorting & pagination
-  const filteredUsers = users
-    .filter((user) => {
+  const filteredUsers = users.filter((user) => {
       let matchesSearch = true;
       if (searchTerm) {
         switch (searchFilter) {
@@ -119,9 +120,49 @@ export const UserManagement = () => {
   const endIndex = startIndex + itemsPerPage;
   const currentUsers = filteredUsers.slice(startIndex, endIndex);
 
-  const handleStatusChange = (userId: string, newStatus: string) => {
-    setUsers(users.map((user) => (user.id === userId ? { ...user, status: newStatus } : user)));
-  };
+  const handleStatusChange = async (userId: string, newStatus: boolean) => {
+  try {
+    // 🔐 Use your Postman token here (replace or fetch from localStorage if stored)
+    const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2OGQwYjRmOTczZTFkMTc3M2Q0MmQ1MjEiLCJpYXQiOjE3NjI5MzEwOTJ9.iqzXVR7p9u0yPOvUq_Zi7l6RnPHjhn4SPsKsi4MUdQU";
+    // 1️⃣ Update UI immediately
+    setUsers((prevUsers) =>
+      prevUsers.map((user) =>
+        user._id === userId ? { ...user, status: newStatus } : user
+      )
+    );
+
+    // 2️⃣ Send PATCH request to backend
+    const response = await fetch("https://api.new.techember.in/api/user/status-update", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        'token': `${token}`, 
+      },
+      body: JSON.stringify({
+        userId,
+        status: newStatus, // true or false
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to update status");
+    }
+
+    console.log("Updated status:", data);
+
+    } catch (error) {
+    console.error("Error updating status:", error);
+
+    // 3️⃣ rollback UI if backend fails
+    setUsers((prevUsers) =>
+      prevUsers.map((user) =>
+        user._id === userId ? { ...user, status: !newStatus } : user
+      )
+    );
+  }
+};
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -233,7 +274,7 @@ export const UserManagement = () => {
                 <th>Referred By</th>
                 <th>Registered</th>
                 <th>IP</th>
-                <th>Address</th>
+                {/*<th>Address</th>*/}
                 <th>Status</th>
                 <th>MPIN</th>
                 <th>Balance</th>
@@ -249,8 +290,8 @@ export const UserManagement = () => {
                     </button>
                   </td>
 
-                  <td>{user.name}</td>
-                  <td>{user.mobile}</td>
+                  <td>{user.firstName} {user.lastName}</td>
+                  <td>{user.phone}</td>
                   <td>{user.email}</td>
 
                   <td>
@@ -268,19 +309,27 @@ export const UserManagement = () => {
                   <td>{formatDate(user.createdAt)}</td>
 
                   <td>{user.ipAddress}</td>
-                  <td>{user.address}</td>
+                  {/*<td>{user.address}</td>*/}
 
                   <td>
-                    <Switch
-                      checked={user.status === "active"}
-                      onCheckedChange={(c) =>
-                        handleStatusChange(user.id, c ? "active" : "suspended")
-                      }
-                    />
+                    <button
+                      aria-pressed={user.status}
+                      onClick={() => handleStatusChange(user._id, !user.status)}
+                      className="relative inline-flex h-6 w-11 items-center rounded-full bg-gray-200 p-1"
+                      >
+                      <span
+                        className={`
+                          block h-4 w-4 rounded-full transform transition-transform duration-200
+                          ${user.status ? "translate-x-5 bg-green-500" : "translate-x-0 bg-gray-400"}
+                        `}
+                      />
+                    </button>
                   </td>
 
+
+
                   <td>
-                    {visibleMpin[user.id] ? user.mpin : "****"}
+                    {visibleMpin[user.id] ? user.mPin : "****"}
                     <Button
                       size="sm"
                       variant="ghost"
@@ -290,7 +339,7 @@ export const UserManagement = () => {
                     </Button>
                   </td>
 
-                  <td>₹{Number(user.walletBalance).toFixed(2)}</td>
+                  <td>₹{Number(user.wallet.balance).toFixed(2)}</td>
                 </tr>
               ))}
             </tbody>

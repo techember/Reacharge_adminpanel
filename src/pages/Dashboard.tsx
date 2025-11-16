@@ -15,13 +15,6 @@ import { mockDashboardStats, mockChartData } from '@/mocks/data';
 
 const StatCard = ({ 
   title, value, growth, icon: Icon, trend = 'up', onClick
-}: { 
-  title: string; 
-  value: string | number; 
-  growth: number; 
-  icon: React.ComponentType<any>; 
-  trend?: 'up' | 'down';
-  onClick?: () => void;
 }) => (
   <div 
     className="admin-card p-6 cursor-pointer hover:shadow-lg transition-shadow duration-200 hover:scale-[1.02]"
@@ -45,19 +38,13 @@ const StatCard = ({
   </div>
 );
 
-const QuickAction = ({ 
-  title, icon: Icon, onClick
-}: { 
-  title: string; 
-  icon: React.ComponentType<any>; 
-  onClick: () => void; 
-}) => (
+const QuickAction = ({ title, icon: Icon, onClick }) => (
   <button
     onClick={onClick}
     className="admin-card p-4 hover:shadow-lg transition-shadow text-left group"
   >
     <div className="flex items-center gap-3">
-      <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+      <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center group-hover:bg-primary/20">
         <Icon className="h-5 w-5 text-primary" />
       </div>
       <span className="font-medium text-foreground">{title}</span>
@@ -71,28 +58,84 @@ const chartConfig = {
 };
 
 export const Dashboard = () => {
-  const [stats, setStats] = useState<any>(null);
-  const [charts, setCharts] = useState<any>(null);
+  const [stats, setStats] = useState(null);
+  const [charts, setCharts] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
-    const useMock = import.meta.env.VITE_USE_MOCK_AUTH === 'true';
-    const API_URL = import.meta.env.VITE_API_BASE_URL;
+    const fetchDashboard = async () => {
+      const useMock = import.meta.env.VITE_USE_MOCK_AUTH === 'true';
 
-    if (useMock) {
-      console.log('⚡ Using mock data for dashboard');
-      setStats(mockDashboardStats);
-      setCharts(mockChartData);
-    } else {
-      console.log('🌐 Fetching real data from API');
-      fetch(`${API_URL}/admin/dashboard`)   // <-- backend will implement this endpoint
-        .then(res => res.json())
-        .then(data => {
-          setStats(data.stats);
-          setCharts(data.charts);
-        })
-        .catch(err => console.error('Dashboard fetch failed', err));
-    }
+      if (!useMock) {
+        console.log("⚡ Using mock data for dashboard");
+        setStats(mockDashboardStats);
+        setCharts(mockChartData);
+        return;
+      }
+
+      try {
+        console.log("🌐 Fetching real dashboard data…");
+
+        const response = await fetch(
+          "https://api.new.techember.in/api/dashboard",
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch dashboard data");
+        }
+
+        const json = await response.json()
+        const data = json.Data;
+
+        // console.log(mockDashboardStats);
+        // setStats(data.Data);
+        setCharts(mockChartData);
+        /*setCharts(data.charts);*/
+
+        const usersSection = data[0];
+        const rechargeSection = data[1];
+        const billSection = data[2];
+        const addMoneySection = data[3];
+        
+        const mappedStats = {
+          totalUsers: usersSection.count ?? 0,
+          activeUsers: usersSection.Active ?? 0,
+          primeUsers: usersSection.Prime ?? 0,
+          todayUsers: usersSection.TodayUser ?? 0,
+
+          totalTransactions:
+            rechargeSection.recharge +
+            billSection.recharge +
+            addMoneySection.recharge,
+
+          totalRevenue:
+            rechargeSection.amount +
+            billSection.amount +
+            addMoneySection.amount,
+
+          // You can adjust these later or compute dynamically
+          userGrowth: 0,
+          transactionGrowth: 0,
+          revenueGrowth: 0,
+          pendingKyc: 0,
+          kycGrowth: 0,
+        };
+
+      setStats(mappedStats);
+
+      } catch (error) {
+        console.error("Dashboard fetch failed:", error);
+      }
+    };
+
+    fetchDashboard();
   }, []);
 
   if (!stats || !charts) return <div className="p-6">Loading...</div>;
@@ -107,6 +150,7 @@ export const Dashboard = () => {
   return (
     <AdminLayout title="Dashboard">
       <div className="p-6 space-y-6">
+
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <StatCard 
@@ -130,14 +174,14 @@ export const Dashboard = () => {
             icon={BanknotesIcon}
             onClick={() => navigate('/reports')}
           />
-          <StatCard 
+          {/*<StatCard 
             title="Pending KYC" 
             value={stats.pendingKyc} 
             growth={stats.kycGrowth} 
-            icon={DocumentCheckIcon} 
+            icon={DocumentCheckIcon}
             trend="down"
             onClick={() => navigate('/kyc')}
-          />
+          />*/}
         </div>
 
         {/* Charts */}
@@ -151,7 +195,12 @@ export const Dashboard = () => {
                   <XAxis dataKey="month" />
                   <YAxis />
                   <ChartTooltip content={<ChartTooltipContent />} />
-                  <Line type="monotone" dataKey="value" stroke="hsl(var(--primary))" strokeWidth={2} />
+                  <Line 
+                    type="monotone" 
+                    dataKey="value" 
+                    stroke="hsl(var(--primary))"
+                    strokeWidth={2}
+                  />
                 </LineChart>
               </ResponsiveContainer>
             </ChartContainer>
@@ -166,7 +215,13 @@ export const Dashboard = () => {
                   <XAxis dataKey="day" />
                   <YAxis />
                   <ChartTooltip content={<ChartTooltipContent />} />
-                  <Area type="monotone" dataKey="amount" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.2} />
+                  <Area 
+                    type="monotone" 
+                    dataKey="amount" 
+                    stroke="hsl(var(--primary))" 
+                    fill="hsl(var(--primary))" 
+                    fillOpacity={0.2}
+                  />
                 </AreaChart>
               </ResponsiveContainer>
             </ChartContainer>
@@ -178,10 +233,16 @@ export const Dashboard = () => {
           <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {quickActions.map((action, index) => (
-              <QuickAction key={index} title={action.title} icon={action.icon} onClick={action.action} />
+              <QuickAction 
+                key={index} 
+                title={action.title} 
+                icon={action.icon} 
+                onClick={action.action} 
+              />
             ))}
           </div>
         </div>
+
       </div>
     </AdminLayout>
   );

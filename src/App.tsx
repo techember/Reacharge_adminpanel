@@ -41,7 +41,7 @@ const AdminRoutes = () => {
       <Route path="/referral" element={<ReferralCashback />} />
       <Route path="/support" element={<Support />} />
       <Route path="/notifications" element={<NotificationManagement />} />
-      <Route path="/profile" element={<AdminProfile />} />
+      {/*<Route path="/profile" element={<AdminProfile />} />*/}
       <Route path="/affiliate-store" element={<AffiliateStore />} />
       <Route path="/master/banner" element={<Banner />} />
       <Route path="*" element={<NotFound />} />
