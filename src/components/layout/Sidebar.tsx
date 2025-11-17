@@ -57,8 +57,8 @@ const navigation: NavItem[] = [
     ]
   },
   { name: 'Reports', href: '/reports', icon: ChartBarIcon },
-  { name: 'Referral & Cashback', href: '/referral', icon: UserPlusIcon },
-  { name: 'Support & Feedback', href: '/support', icon: ChatBubbleLeftRightIcon },
+  //{ name: 'Referral & Cashback', href: '/referral', icon: UserPlusIcon },
+  //{ name: 'Support & Feedback', href: '/support', icon: ChatBubbleLeftRightIcon },
   { name: 'Notifications', href: '/notifications', icon: BellIcon },
   // { name: 'Admin Profile', href: '/profile', icon: UserIcon },
   { name: 'Affiliate Store', href: '/affiliate-store', icon: BuildingStorefrontIcon }

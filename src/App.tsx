@@ -38,8 +38,8 @@ const AdminRoutes = () => {
       <Route path="/travel-bookings" element={<AdminTravelBookings />} />
       <Route path="/commission" element={<CommissionSettings />} />
       <Route path="/reports" element={<Reports />} />
-      <Route path="/referral" element={<ReferralCashback />} />
-      <Route path="/support" element={<Support />} />
+      {/* {<Route path="/referral" element={<ReferralCashback />} />} */}
+      {/* {<Route path="/support" element={<Support />} />} */}
       <Route path="/notifications" element={<NotificationManagement />} />
       {/*<Route path="/profile" element={<AdminProfile />} />*/}
       <Route path="/affiliate-store" element={<AffiliateStore />} />
