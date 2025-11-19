@@ -39,6 +39,8 @@ export const UserManagement = () => {
   const [selectedUserForReferral, setSelectedUserForReferral] = useState<string | null>(null);
   const [referralInput, setReferralInput] = useState("");
   const { toast } = useToast();
+  const [walletModalOpen, setWalletModalOpen] = useState(false);
+  const [walletData, setWalletData] = useState<any>(null);
 
   useEffect(() => {
     const loadUsers = async () => {
@@ -77,6 +79,29 @@ export const UserManagement = () => {
 
     loadUsers();
   }, []);
+
+  const fetchUserWallet = async (userId: string) => {
+    try {
+      const token =
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2OGQwYjRmOTczZTFkMTc3M2Q0MmQ1MjEiLCJpYXQiOjE3NjI5MzEwOTJ9.iqzXVR7p9u0yPOvUq_Zi7l6RnPHjhn4SPsKsi4MUdQU";
+
+      const res = await fetch(`https://api.new.techember.in/api/wallet/user/${userId}`, {
+        headers: { token }
+      });
+
+      const data = await res.json();
+      setWalletData(data);
+      setWalletModalOpen(true);
+    } catch (error) {
+      console.error("Failed to load wallet:", error);
+      toast({
+        title: "Wallet Error",
+        description: "Unable to load user wallet",
+        variant: "destructive"
+      });
+    }
+  };
+
 
   // ✅ Filtering, sorting & pagination
   const filteredUsers = users.filter((user) => {
@@ -278,6 +303,7 @@ export const UserManagement = () => {
                 <th>Status</th>
                 <th>MPIN</th>
                 <th>Balance</th>
+                <th>Wallet</th>
               </tr>
             </thead>
 
@@ -339,7 +365,17 @@ export const UserManagement = () => {
                     </Button>
                   </td>
 
+                  <td>
+                    <button
+                      onClick={() => fetchUserWallet(user._id)}
+                      className="p-2 rounded hover:bg-gray-100"
+                    >
+                      <img src="/wallet.png" alt="wallet" className="h-6 w-6" />
+                    </button>
+                  </td>
+
                   <td>₹{Number(user.wallet.balance).toFixed(2)}</td>
+
                 </tr>
               ))}
             </tbody>
@@ -378,6 +414,28 @@ export const UserManagement = () => {
           </div>
         )}
       </div>
+      
+      {walletModalOpen && (
+        <Dialog open={walletModalOpen} onOpenChange={setWalletModalOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>User Wallet</DialogTitle>
+            </DialogHeader>
+
+            {walletData ? (
+              <div className="space-y-3">
+                <p><strong>User ID:</strong> {walletData.userId}</p>
+                <p><strong>Balance:</strong> ₹{walletData.balance}</p>
+                <p><strong>Total Earned:</strong> ₹{walletData.totalEarned}</p>
+                <p><strong>Total Spent:</strong> ₹{walletData.totalSpent}</p>
+              </div>
+            ) : (
+              <p>Loading...</p>
+            )}
+          </DialogContent>
+        </Dialog>
+      )}
+
     </AdminLayout>
   );
 };
