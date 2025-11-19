@@ -18,14 +18,6 @@ interface BannerItem {
   link: string;
 }
 
-const mockBanners: BannerItem[] = Array.from({ length: 22 }).map((_, i) => ({
-  id: `banner_${i + 1}`,
-  imageUrl: "/placeholder.svg",
-  section: ["Top", "Middle", "Bottom", "Sidebar"][i % 4],
-  type: ["Image", "Carousel", "Popup"][i % 3],
-  link: "https://example.com/banner",
-}));
-
 const sectionOptions = ["Top", "Middle", "Bottom", "Sidebar"];
 
 export const Banner: React.FC = () => {
@@ -36,7 +28,12 @@ export const Banner: React.FC = () => {
   const [banners, setBanners] = useState<BannerItem[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
+
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+
+  const [editBanner, setEditBanner] = useState<BannerItem | null>(null);
+
   const [newBanner, setNewBanner] = useState<{
     imageFile?: File | null;
     section: string;
@@ -48,38 +45,64 @@ export const Banner: React.FC = () => {
     type: "",
     link: "",
   });
+
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // ✅ Fetch banners from backend or mock
+  // ---------------- FETCH BANNERS --------------------
   useEffect(() => {
-    if (useMock) {
-      setBanners(mockBanners);
-    } else {
-      fetch(`${apiBaseUrl}/banners`)
-        .then((res) => {
-          if (!res.ok) throw new Error("Failed to fetch banners");
-          return res.json();
-        })
-        .then((data) => setBanners(data))
-        .catch((err) => console.error("Error fetching banners:", err));
-    }
-  }, [useMock, apiBaseUrl]);
+    const fetchBanners = async () => {
+      try {
+        const token = localStorage.getItem("token");
+
+        const res = await fetch(`https://api.new.techember.in/api/banner/list`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            token: token ? token : "",
+          },
+        });
+
+        if (!res.ok) throw new Error("Failed to fetch banners");
+
+        const data = await res.json();
+        if (data?.Status && Array.isArray(data.Data)) {
+          setBanners(data.Data);
+        }
+      } catch (error) {
+        console.error("Error fetching banners:", error);
+      }
+    };
+
+    fetchBanners();
+  }, [apiBaseUrl]);
 
   const totalPages = Math.ceil(banners.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = Math.min(startIndex + itemsPerPage, banners.length);
   const currentItems = banners.slice(startIndex, endIndex);
 
-  const handleDelete = (id: string) => {
+  // ---------------- DELETE --------------------
+  const handleDelete = async (id: string) => {
     if (useMock) {
       setBanners((prev) => prev.filter((b) => b.id !== id));
-    } else {
-      fetch(`${apiBaseUrl}/banners/${id}`, { method: "DELETE" })
-        .then((res) => {
-          if (!res.ok) throw new Error("Failed to delete banner");
-          setBanners((prev) => prev.filter((b) => b.id !== id));
-        })
-        .catch((err) => console.error("Error deleting banner:", err));
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem("token");
+
+      const res = await fetch(`https://api.new.techember.in/api/banner/delete/${id}`, {
+        method: "DELETE",
+        headers: {
+          token: token ? token : "",
+        },
+      });
+
+      if (!res.ok) throw new Error("Failed to delete banner");
+
+      setBanners((prev) => prev.filter((b) => b.id !== id));
+    } catch (error) {
+      console.error("Error deleting banner:", error);
     }
 
     if (startIndex >= banners.length - 1 && currentPage > 1) {
@@ -87,74 +110,130 @@ export const Banner: React.FC = () => {
     }
   };
 
+
+  // ---------------- OPEN EDIT MODAL --------------------
+  const handleEditClick = (item: BannerItem) => {
+    setEditBanner(item);
+    setShowEditModal(true);
+  };
+
+  // ---------------- UPDATE BANNER (PATCH) --------------------
+  const handleUpdate = async () => {
+    if (!editBanner) return;
+
+    const token = localStorage.getItem("token");
+
+    try {
+      const res = await fetch(`https://api.new.techember.in/api/banner/update/${editBanner.id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          token: token ? token : "",
+        },
+        body: JSON.stringify({
+          type: editBanner.type,
+          link: editBanner.link,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Failed to update banner");
+
+      const data = await res.json();
+
+      if (data?.Status) {
+        setBanners((prev) =>
+          prev.map((b) =>
+            b.id === editBanner.id
+              ? { ...b, type: editBanner.type, link: editBanner.link }
+              : b
+          )
+        );
+      }
+    } catch (error) {
+      console.error("Error updating banner:", error);
+    }
+
+    setShowEditModal(false);
+  };
+
+  // ---------------- VALIDATIONS & CREATE --------------------
   const validate = () => {
     const e: Record<string, string> = {};
     if (!newBanner.section) e.section = "Section is required";
     if (!newBanner.type.trim()) e.type = "Type is required";
     if (!newBanner.link.trim()) e.link = "Link is required";
+
     try {
-      if (newBanner.link) new URL(newBanner.link);
+      new URL(newBanner.link);
     } catch {
       e.link = "Enter a valid URL";
     }
+
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!validate()) return;
-    const imageUrl = newBanner.imageFile
-      ? URL.createObjectURL(newBanner.imageFile)
-      : "/placeholder.svg";
-
-    const item: BannerItem = {
-      id: `banner_${Date.now()}`,
-      imageUrl,
-      section: newBanner.section,
-      type: newBanner.type.trim(),
-      link: newBanner.link.trim(),
-    };
 
     if (useMock) {
+      const item: BannerItem = {
+        id: `banner_${Date.now()}`,
+        imageUrl: "/placeholder.svg",
+        section: newBanner.section,
+        type: newBanner.type.trim(),
+        link: newBanner.link.trim(),
+      };
+
       setBanners((prev) => [item, ...prev]);
-    } else {
-      fetch(`${apiBaseUrl}/banners`, {
+      setShowAddModal(false);
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem("token");
+      const formData = new FormData();
+
+      if (newBanner.imageFile)
+        formData.append("image", newBanner.imageFile);
+      formData.append("section", newBanner.section);
+      formData.append("type", newBanner.type.trim());
+      formData.append("link", newBanner.link.trim());
+
+      const res = await fetch(`https://api.new.techember.in/api/banner/create`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(item),
-      })
-        .then((res) => {
-          if (!res.ok) throw new Error("Failed to add banner");
-          return res.json();
-        })
-        .then((data) => setBanners((prev) => [data, ...prev]))
-        .catch((err) => console.error("Error adding banner:", err));
+        headers: { token: token ? token : "" },
+        body: formData,
+      });
+
+      if (!res.ok) throw new Error("Failed to create banner");
+
+      const data = await res.json();
+
+      if (data?.Status && data?.Data) {
+        setBanners((prev) => [data.Data, ...prev]);
+      }
+    } catch (error) {
+      console.error("Error adding banner:", error);
     }
 
     setShowAddModal(false);
     setNewBanner({ imageFile: null, section: "", type: "", link: "" });
-    setErrors({});
   };
 
+  // ---------------- UI --------------------
   return (
     <AdminLayout title="Banners">
       <div className="p-6">
         <div className="admin-card">
-          {/* Header */}
-          <div className="p-6 border-b border-border">
-            <div className="flex items-start sm:items-center justify-between gap-4 flex-col sm:flex-row">
-              <h2 className="text-xl font-semibold">Banners</h2>
-              <button
-                onClick={() => setShowAddModal(true)}
-                className="btn-primary flex items-center gap-2"
-              >
-                <PlusIcon className="h-4 w-4" />
-                 NEW BANNER
-              </button>
-            </div>
+          <div className="p-6 border-b border-border flex justify-between">
+            <h2 className="text-xl font-semibold">Banners</h2>
+            <button onClick={() => setShowAddModal(true)} className="btn-primary flex items-center gap-2">
+              <PlusIcon className="h-4 w-4" />
+              NEW BANNER
+            </button>
           </div>
 
-          {/* Table */}
           <div className="overflow-x-auto">
             <table className="admin-table">
               <thead>
@@ -166,43 +245,32 @@ export const Banner: React.FC = () => {
                   <th>Action</th>
                 </tr>
               </thead>
+
               <tbody>
                 {currentItems.map((item) => (
                   <tr key={item.id}>
                     <td>
-                      <div className="h-10 w-10 rounded overflow-hidden bg-accent flex items-center justify-center">
-                        <img
-                          src={item.imageUrl}
-                          alt={`${item.section} ${item.type}`}
-                          className="h-10 w-10 object-cover"
-                        />
-                      </div>
+                      <img src={item.imageUrl} className="h-10 w-10 rounded object-cover" />
                     </td>
-                    <td className="font-medium">{item.section}</td>
+                    <td>{item.section}</td>
                     <td>{item.type}</td>
                     <td>
-                      <a
-                        href={item.link}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1 text-primary hover:underline"
-                      >
-                        <LinkIcon className="h-4 w-4" />
+                      <a href={item.link} target="_blank" className="text-primary underline">
                         {new URL(item.link).hostname}
                       </a>
                     </td>
                     <td>
-                      <div className="flex items-center gap-2">
+                      <div className="flex gap-2">
                         <button
+                          onClick={() => handleEditClick(item)}
                           className="p-1 text-primary hover:bg-primary/10 rounded"
-                          title="Edit"
                         >
                           <PencilSquareIcon className="h-4 w-4" />
                         </button>
+
                         <button
                           onClick={() => handleDelete(item.id)}
                           className="p-1 text-destructive hover:bg-destructive/10 rounded"
-                          title="Delete"
                         >
                           <TrashIcon className="h-4 w-4" />
                         </button>
@@ -216,145 +284,76 @@ export const Banner: React.FC = () => {
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="p-6 border-t border-border">
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">
-                  Showing {startIndex + 1} to {endIndex} of {banners.length}{" "}
-                  results
-                </p>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                    disabled={currentPage === 1}
-                    className="p-2 border border-border rounded-lg hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <ChevronLeftIcon className="h-4 w-4" />
-                  </button>
-                  <span className="text-sm font-medium px-3">
-                    {currentPage} of {totalPages}
-                  </span>
-                  <button
-                    onClick={() =>
-                      setCurrentPage(Math.min(totalPages, currentPage + 1))
-                    }
-                    disabled={currentPage === totalPages}
-                    className="p-2 border border-border rounded-lg hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <ChevronRightIcon className="h-4 w-4" />
-                  </button>
-                </div>
+            <div className="p-6 border-t border-border flex justify-between">
+              <p className="text-sm">
+                Showing {startIndex + 1} to {endIndex} of {banners.length}
+              </p>
+
+              <div className="flex gap-2">
+                <button
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  className="p-2 border rounded-lg disabled:opacity-50"
+                >
+                  <ChevronLeftIcon className="h-4 w-4" />
+                </button>
+
+                <span>{currentPage} / {totalPages}</span>
+
+                <button
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  className="p-2 border rounded-lg disabled:opacity-50"
+                >
+                  <ChevronRightIcon className="h-4 w-4" />
+                </button>
               </div>
             </div>
           )}
         </div>
       </div>
 
-      {/* Add Banner Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-background rounded-lg p-6 w-full max-w-md mx-4">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold">Add New Banner</h3>
-              <button
-                onClick={() => setShowAddModal(false)}
-                className="p-1 hover:bg-accent rounded"
-              >
+      {/* ---------------- EDIT MODAL ---------------- */}
+      {showEditModal && editBanner && (
+        <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50">
+          <div className="bg-white p-6 rounded-lg w-full max-w-md">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-semibold text-lg">Edit Banner</h3>
+              <button onClick={() => setShowEditModal(false)}>
                 <XMarkIcon className="h-5 w-5" />
               </button>
             </div>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-2">
-                  Image Upload
-                </label>
+                <label className="text-sm font-medium">Type</label>
                 <input
-                  type="file"
-                  accept="image/*"
+                  className="w-full p-2 border rounded"
+                  value={editBanner.type}
                   onChange={(e) =>
-                    setNewBanner({
-                      ...newBanner,
-                      imageFile: e.target.files?.[0] || null,
-                    })
+                    setEditBanner({ ...editBanner, type: e.target.value })
                   }
-                  className="w-full p-2 border border-border rounded-lg"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">
-                  Section *
-                </label>
-                <select
-                  value={newBanner.section}
-                  onChange={(e) =>
-                    setNewBanner({ ...newBanner, section: e.target.value })
-                  }
-                  className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary ${
-                    errors.section ? "border-destructive" : "border-border"
-                  }`}
-                >
-                  <option value="">Select section</option>
-                  {sectionOptions.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
-                </select>
-                {errors.section && (
-                  <p className="text-sm text-destructive mt-1">
-                    {errors.section}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2">Type *</label>
+                <label className="text-sm font-medium">Link</label>
                 <input
-                  type="text"
-                  value={newBanner.type}
+                  className="w-full p-2 border rounded"
+                  value={editBanner.link}
                   onChange={(e) =>
-                    setNewBanner({ ...newBanner, type: e.target.value })
+                    setEditBanner({ ...editBanner, link: e.target.value })
                   }
-                  className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary ${
-                    errors.type ? "border-destructive" : "border-border"
-                  }`}
-                  placeholder="Image, Carousel, Popup, etc."
                 />
-                {errors.type && (
-                  <p className="text-sm text-destructive mt-1">
-                    {errors.type}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2">Link *</label>
-                <input
-                  type="url"
-                  value={newBanner.link}
-                  onChange={(e) =>
-                    setNewBanner({ ...newBanner, link: e.target.value })
-                  }
-                  className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary ${
-                    errors.link ? "border-destructive" : "border-border"
-                  }`}
-                  placeholder="https://example.com"
-                />
-                {errors.link && (
-                  <p className="text-sm text-destructive mt-1">
-                    {errors.link}
-                  </p>
-                )}
               </div>
             </div>
 
-            <div className="flex gap-3 mt-6">
-              <button onClick={handleSubmit} className="btn-primary flex-1">
-                Submit
+            <div className="flex gap-2 mt-6">
+              <button onClick={handleUpdate} className="btn-primary flex-1">
+                Update
               </button>
               <button
-                onClick={() => setShowAddModal(false)}
+                onClick={() => setShowEditModal(false)}
                 className="btn-secondary flex-1"
               >
                 Cancel
@@ -366,4 +365,3 @@ export const Banner: React.FC = () => {
     </AdminLayout>
   );
 };
-
