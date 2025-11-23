@@ -11,6 +11,7 @@ import { WalletManagement } from "@/pages/WalletManagement";
 import { AdminServiceProviders } from "@/pages/AdminServiceProviders";
 import { AdminTravelBookings} from "./pages/AdminTravelBookings"
 import { CommissionSettings } from "@/pages/CommissionSettings";
+import { ServiceControl } from "@/pages/serviceControl";
 import { Reports } from "@/pages/Reports";
 import { ReferralCashback } from "@/pages/ReferralCashback";
 import { Support } from "@/pages/Support";
@@ -37,6 +38,8 @@ const AdminRoutes = () => {
       <Route path="/serviceproviders" element={<AdminServiceProviders />} />
       <Route path="/travel-bookings" element={<AdminTravelBookings />} />
       <Route path="/commission" element={<CommissionSettings />} />
+      <Route path="/services" element={<ServiceControl />} />
+      <Route path="/master/services" element={<ServiceControl />} />
       <Route path="/reports" element={<Reports />} />
       {/* {<Route path="/referral" element={<ReferralCashback />} />} */}
       {/* {<Route path="/support" element={<Support />} />} */}

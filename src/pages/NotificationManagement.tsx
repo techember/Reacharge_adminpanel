@@ -1,86 +1,191 @@
-import React, { useEffect, useState } from 'react';
-import { AdminLayout } from '@/components/layout/AdminLayout';
+import React, { useEffect, useState } from "react";
+import { AdminLayout } from "@/components/layout/AdminLayout";
 import {
   BellIcon,
   PhotoIcon,
   PaperAirplaneIcon,
   LinkIcon,
-} from '@heroicons/react/24/outline';
+} from "@heroicons/react/24/outline";
+import { Videotape } from "lucide-react";
 
 interface Notification {
   title: string;
   message: string;
+
   popImage?: File | null;
   popImageUrl?: string;
+
+  popName?: string;
+  popLink?: string;
+  popStatus?: string;
+
+  bannerImage?: File | null;
 }
 
 export const NotificationManagement = () => {
-  const [activeTab, setActiveTab] = useState<"notification" | "pop-image">("notification");
+  const [activeTab, setActiveTab] = useState<
+    "notification" | "pop-image" | "banner"
+  >("notification");
 
   const [notification, setNotification] = useState<Notification>({
     title: "",
     message: "",
     popImage: null,
     popImageUrl: "",
+    popName: "",
+    popLink: "",
+    popStatus: "true",
+    bannerImage: null,
   });
 
   const [notifications, setNotifications] = useState<any[]>([]);
 
-  // Fetch Notifications
-  useEffect(() => {
-    const getData = async () => {
-      try {
-        const res = await fetch(`https://api.new.techember.in/api/notification/list/admin`);
-        const data = await res.json();
-        setNotifications(data);
-      } catch (e) {
-        console.log(e);
-      }
-    };
-    getData();
-  }, []);
-
-  // Normal Notification
-  const sendNotification = async () => {
+  // =====================================
+  // Fetch Notification List
+  // =====================================
+  const fetchNotifications = async () => {
     try {
-      const res = await fetch(`https://api.new.techember.in/api/notification`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          token: `${localStorage.getItem("token")}`,
-        },
-        body: JSON.stringify({
-          title: notification.title,
-          content: notification.message,
-        }),
-      });
+      const res = await fetch(
+        `https://api.new.techember.in/api/notification/list/admin`,
+        {
+          method: "GET",
+          headers: {
+            token: `${localStorage.getItem("token")}` || "",
+          },
+        }
+      );
 
       const data = await res.json();
-      setNotifications((prev) => [...prev, data]);
+
+      setNotifications(
+        Array.isArray(data?.notifications)
+          ? data.notifications
+          : Array.isArray(data)
+          ? data
+          : []
+      );
     } catch (e) {
       console.log(e);
     }
   };
 
-  // Pop Image Notification
+  useEffect(() => {
+    fetchNotifications();
+  }, []);
+
+  // =====================================
+  // Send Normal Notification
+  // =====================================
+  const sendNotification = async () => {
+    try {
+      const res = await fetch(
+        `https://api.new.techember.in/api/notification/push`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            token: `${localStorage.getItem("token")}`,
+          },
+          body: JSON.stringify({
+            title: notification.title,
+            content: notification.message,
+          }),
+        }
+      );
+
+      await res.json();
+
+      setNotification((prev) => ({
+        ...prev,
+        title: "",
+        message: "",
+      }));
+
+      fetchNotifications();
+    } catch (e) {
+      console.log(e);
+    }
+  };
+
+  // =====================================
+  // Update POP Image
+  // =====================================
   const sendPopImage = async () => {
     try {
-      if (!notification.popImage) return alert("Upload an image");
-      if (!notification.popImageUrl) return alert("Enter URL");
+      const formData = new FormData();
+
+      if (notification.popImage)
+        formData.append("image", notification.popImage);
+      if (notification.popName?.trim())
+        formData.append("name", notification.popName);
+      if (notification.popLink?.trim())
+        formData.append("link", notification.popLink);
+      if (notification.popStatus)
+        formData.append("status", notification.popStatus);
+
+      const res = await fetch(
+        `https://api.new.techember.in/api/pop-image/update`,
+        {
+          method: "PUT",
+          headers: {
+            token: `${localStorage.getItem("token")}`,
+          },
+          body: formData,
+        }
+      );
+
+      const data = await res.json();
+      console.log("POP IMAGE UPDATE =>", data);
+
+      alert("Pop image updated!");
+
+      setNotification((prev) => ({
+        ...prev,
+        popImage: null,
+        popName: "",
+        popLink: "",
+      }));
+    } catch (e) {
+      console.log(e);
+    }
+  };
+
+  // =====================================
+  // Upload Banner (NEW TAB)
+  // API: POST /api/notification/push-image
+  // =====================================
+  const uploadBanner = async () => {
+    try {
+      if (!notification.bannerImage)
+        return alert("Upload a banner image first");
 
       const formData = new FormData();
-      formData.append("image", notification.popImage);
-      formData.append("url", notification.popImageUrl);
+      formData.append("image", notification.bannerImage);
+      formData.append("title", notification.title || "");
+      formData.append("content", notification.message || "");
 
-      await fetch(`https://api.new.techember.in/api/pop-image`, {
-        method: "PUT",
-        headers: {
-          token: `${localStorage.getItem("token")}`,
-        },
-        body: formData,
-      });
+      const res = await fetch(
+        `https://api.new.techember.in/api/notification/push-image`,
+        {
+          method: "POST",
+          headers: {
+            token: `${localStorage.getItem("token")}`,
+          },
+          body: formData,
+        }
+      );
 
-      alert("Pop image sent!");
+      const data = await res.json();
+      console.log("BANNER RESPONSE:", data);
+
+      alert("Banner uploaded!");
+
+      setNotification((prev) => ({
+        ...prev,
+        title: "",
+        message: "",
+        bannerImage: null,
+      }));
     } catch (e) {
       console.log(e);
     }
@@ -89,34 +194,43 @@ export const NotificationManagement = () => {
   return (
     <AdminLayout title="Notification Management">
       <div className="p-6 max-w-4xl mx-auto">
-
-        {/* ========================= */}
-        {/*       TAB SWITCHER        */}
-        {/* ========================= */}
+        {/* =========================== */}
+        {/* TAB SWITCHER */}
+        {/* =========================== */}
         <div className="flex gap-4 mb-6">
-
-          {/* Notification Tab */}
           <button
             onClick={() => setActiveTab("notification")}
-            className={`px-4 py-2 rounded-lg font-medium border 
-            ${activeTab === "notification" ? "bg-primary text-white" : "bg-white"}`}
+            className={`px-4 py-2 rounded-lg font-medium border ${
+              activeTab === "notification"
+                ? "bg-primary text-white"
+                : "bg-white"
+            }`}
           >
             Notification
           </button>
 
-          {/* Pop Image Tab */}
           <button
             onClick={() => setActiveTab("pop-image")}
-            className={`px-4 py-2 rounded-lg font-medium border 
-            ${activeTab === "pop-image" ? "bg-primary text-white" : "bg-white"}`}
+            className={`px-4 py-2 rounded-lg font-medium border ${
+              activeTab === "pop-image" ? "bg-primary text-white" : "bg-white"
+            }`}
           >
             Pop Image
           </button>
+
+          <button
+            onClick={() => setActiveTab("banner")}
+            className={`px-4 py-2 rounded-lg font-medium border ${
+              activeTab === "banner" ? "bg-primary text-white" : "bg-white"
+            }`}
+          >
+            Banner
+          </button>
         </div>
 
-        {/* ========================= */}
-        {/*    COLUMN: NOTIFICATION   */}
-        {/* ========================= */}
+        {/* =========================== */}
+        {/* NORMAL NOTIFICATION */}
+        {/* =========================== */}
         {activeTab === "notification" && (
           <div className="admin-card p-6">
             <div className="flex items-center gap-3 mb-6">
@@ -125,29 +239,31 @@ export const NotificationManagement = () => {
             </div>
 
             <div className="space-y-6">
-
-              {/* Title */}
               <div>
                 <label className="block text-sm font-medium mb-2">Title</label>
                 <input
                   type="text"
                   value={notification.title}
-                  onChange={(e) => setNotification({ ...notification, title: e.target.value })}
+                  onChange={(e) =>
+                    setNotification({ ...notification, title: e.target.value })
+                  }
                   className="w-full p-3 border rounded-lg"
                 />
               </div>
 
-              {/* Message */}
               <div>
-                <label className="block text-sm font-medium mb-2">Content</label>
+                <label className="block text-sm font-medium mb-2">
+                  Content
+                </label>
                 <textarea
                   value={notification.message}
-                  onChange={(e) => setNotification({ ...notification, message: e.target.value })}
+                  onChange={(e) =>
+                    setNotification({ ...notification, message: e.target.value })
+                  }
                   className="w-full p-3 border rounded-lg h-32 resize-none"
                 />
               </div>
 
-              {/* Send Button */}
               <button
                 onClick={sendNotification}
                 className="btn-primary w-full flex items-center justify-center gap-2"
@@ -159,59 +275,160 @@ export const NotificationManagement = () => {
           </div>
         )}
 
-        {/* ========================= */}
-        {/*   COLUMN: POP IMAGE       */}
-        {/* ========================= */}
+        {/* =========================== */}
+        {/* POP IMAGE */}
+        {/* =========================== */}
         {activeTab === "pop-image" && (
           <div className="admin-card p-6">
             <div className="flex items-center gap-3 mb-6">
               <PhotoIcon className="h-6 w-6 text-primary" />
-              <h2 className="text-xl font-semibold">Send Pop Image Notification</h2>
+              <h2 className="text-xl font-semibold">Update Pop Image</h2>
             </div>
 
             <div className="space-y-6">
-
-              {/* Image Upload */}
               <div>
-                <label className="block text-sm font-medium mb-2">Upload Image</label>
+                <label className="block text-sm font-medium mb-2">
+                  Upload Image
+                </label>
                 <input
                   type="file"
                   accept="image/*"
                   onChange={(e) =>
-                    setNotification({ ...notification, popImage: e.target.files?.[0] || null })
+                    setNotification({
+                      ...notification,
+                      popImage: e.target.files?.[0] || null,
+                    })
                   }
                   className="w-full p-2 border rounded-lg"
                 />
               </div>
 
-              {/* URL */}
               <div>
-                <label className="block text-sm font-medium mb-2 flex items-center gap-2">
-                  <LinkIcon className="h-4 w-4" /> Redirect URL
-                </label>
+                <label className="block text-sm font-medium mb-2">Name</label>
                 <input
                   type="text"
-                  value={notification.popImageUrl}
+                  value={notification.popName}
                   onChange={(e) =>
-                    setNotification({ ...notification, popImageUrl: e.target.value })
+                    setNotification({
+                      ...notification,
+                      popName: e.target.value,
+                    })
                   }
-                  placeholder="https://example.com"
                   className="w-full p-3 border rounded-lg"
                 />
               </div>
 
-              {/* Send Pop Image */}
-              <button
-                onClick={sendPopImage}
-                className="btn-primary w-full"
-              >
-                Send Pop Image
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Redirect Link
+                </label>
+                <input
+                  type="text"
+                  value={notification.popLink}
+                  onChange={(e) =>
+                    setNotification({
+                      ...notification,
+                      popLink: e.target.value,
+                    })
+                  }
+                  className="w-full p-3 border rounded-lg"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">Status</label>
+                <select
+                  value={notification.popStatus}
+                  onChange={(e) =>
+                    setNotification({
+                      ...notification,
+                      popStatus: e.target.value,
+                    })
+                  }
+                  className="w-full p-3 border rounded-lg"
+                >
+                  <option value="true">Active</option>
+                  <option value="false">Inactive</option>
+                </select>
+              </div>
+
+              <button onClick={sendPopImage} className="btn-primary w-full">
+                Update Pop Image
               </button>
             </div>
           </div>
         )}
 
-        {/* Notification list */}
+        {/* =========================== */}
+        {/* BANNER UPLOAD */}
+        {/* =========================== */}
+        {activeTab === "banner" && (
+          <div className="admin-card p-6">
+            <div className="flex items-center gap-3 mb-6">
+              <Videotape className="h-6 w-6 text-primary" />
+              <h2 className="text-xl font-semibold">Upload Banner</h2>
+            </div>
+
+            <div className="space-y-6">
+              <div>
+                <label className="block text-sm font-medium mb-2">Title</label>
+                <input
+                  type="text"
+                  value={notification.title}
+                  onChange={(e) =>
+                    setNotification({ ...notification, title: e.target.value })
+                  }
+                  className="w-full p-3 border rounded-lg"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Content
+                </label>
+                <textarea
+                  value={notification.message}
+                  onChange={(e) =>
+                    setNotification({
+                      ...notification,
+                      message: e.target.value,
+                    })
+                  }
+                  className="w-full p-3 border rounded-lg h-32 resize-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Upload Banner Image
+                </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) =>
+                    setNotification({
+                      ...notification,
+                      bannerImage: e.target.files?.[0] || null,
+                    })
+                  }
+                  className="w-full p-2 border rounded-lg"
+                />
+              </div>
+
+              <button
+                onClick={uploadBanner}
+                className="btn-primary w-full flex items-center justify-center gap-2"
+              >
+                <PaperAirplaneIcon className="h-4 w-4" />
+                Upload Banner
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* =========================== */}
+        {/* Notification List */}
+        {/* =========================== */}
         {notifications.length > 0 && (
           <div className="admin-card p-6 mt-6">
             <h3 className="font-semibold mb-4">Sent Notifications</h3>

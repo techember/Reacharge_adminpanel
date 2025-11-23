@@ -1,75 +1,122 @@
-import React, { useState, useEffect } from 'react';
-import { AdminLayout } from '@/components/layout/AdminLayout';
-import { 
-  CheckCircleIcon, 
-  XCircleIcon, 
-  PlusIcon,
-  MinusIcon,
-  ExclamationTriangleIcon
-} from '@heroicons/react/24/outline';
-import { mockWalletRequests, mockUsers } from '@/mocks/data';
-import axios from 'axios';
+import React, { useState, useEffect } from "react";
+import { AdminLayout } from "@/components/layout/AdminLayout";
+import { PlusIcon, MinusIcon } from "@heroicons/react/24/outline";
+import axios from "axios";
 
 export const WalletManagement = () => {
   const [requests, setRequests] = useState<any[]>([]);
-  const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const [showModal, setShowModal] = useState(false);
-  const [modalType, setModalType] = useState<'credit' | 'debit' | null>(null);
-  const [selectedUser, setSelectedUser] = useState('');
-  const [userSearchTerm, setUserSearchTerm] = useState('');
-  const [filteredUsers, setFilteredUsers] = useState<any[]>([]);
-  const [showUserDropdown, setShowUserDropdown] = useState(false);
-  const [amount, setAmount] = useState('');
-  const [reason, setReason] = useState('');
+  // FILTER STATES
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+  const [userId, setUserId] = useState("");
+  const [txnType, setTxnType] = useState("");
 
-  const isMock = import.meta.env.VITE_USE_MOCK_AUTH === 'true';
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+  const [filteredList, setFilteredList] = useState<any[]>([]);
 
+  const token = localStorage.getItem("token");
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const rowsPerPage = 10;
+
+  // --------------------------------------------
+  // FETCH WALLET HISTORY
+  // --------------------------------------------
   useEffect(() => {
     const fetchData = async () => {
-      setLoading(true);
-      if (isMock) {
-        setRequests(mockWalletRequests);
-        setUsers(mockUsers);
-      } else {
-        try {
-          const [reqRes, usersRes] = await Promise.all([
-            axios.get(`${API_BASE_URL}/wallet/requests`),
-            axios.get(`${API_BASE_URL}/users`)
-          ]);
-          setRequests(reqRes.data);
-          setUsers(usersRes.data);
-        } catch (error) {
-          console.error('Failed to fetch wallet data', error);
-        }
+      try {
+        setLoading(true);
+
+        const res = await axios.get(
+          "https://api.new.techember.in/api/wallet/wallet-txn",
+          {
+            headers: { token },
+          },
+        );
+
+        const safeData = res.data?.Data?.txn ?? [];
+
+        setRequests(safeData);
+        setFilteredList(safeData); // DEFAULT LIST
+      } catch (error) {
+        console.error("Failed to fetch wallet history", error);
+        setRequests([]);
       }
       setLoading(false);
     };
 
     fetchData();
-  }, [isMock, API_BASE_URL]);
+  }, []);
 
-  const handleApprove = (requestId: string) => {
-    setRequests(requests.map(request =>
-      request.id === requestId 
-        ? { ...request, status: 'approved' }
-        : request
-    ));
-    // TODO: if not mock, call backend: axios.post(`${API_BASE_URL}/wallet/approve/${requestId}`)
+  // --------------------------------------------
+  // APPLY FILTERS
+  // --------------------------------------------
+  const applyFilters = () => {
+    let filtered = [...requests];
+
+    if (userId.trim() !== "") {
+      filtered = filtered.filter((i) =>
+        i.userId?.toLowerCase().includes(userId.toLowerCase()),
+      );
+    }
+
+    if (txnType.trim() !== "") {
+      filtered = filtered.filter(
+        (i) => i.txnType?.toLowerCase() === txnType.toLowerCase(),
+      );
+    }
+
+    if (fromDate) {
+      filtered = filtered.filter(
+        (i) => new Date(i.createdAt) >= new Date(fromDate),
+      );
+    }
+
+    if (toDate) {
+      filtered = filtered.filter(
+        (i) => new Date(i.createdAt) <= new Date(toDate),
+      );
+    }
+
+    setFilteredList(filtered);
+    setCurrentPage(1);
   };
 
-  const handleReject = (requestId: string) => {
-    setRequests(requests.map(request =>
-      request.id === requestId 
-        ? { ...request, status: 'rejected' }
-        : request
-    ));
-    // TODO: if not mock, call backend: axios.post(`${API_BASE_URL}/wallet/reject/${requestId}`)
+  const resetFilters = () => {
+    setUserId("");
+    setTxnType("");
+    setFromDate("");
+    setToDate("");
+    setFilteredList(requests);
+    setCurrentPage(1);
   };
 
-  const openModal = (type: 'credit' | 'debit') => {
+  // --------------------------------------------
+  // PAGINATION LOGIC
+  // --------------------------------------------
+  const indexOfLast = currentPage * rowsPerPage;
+  const indexOfFirst = indexOfLast - rowsPerPage;
+  const currentRows = filteredList.slice(indexOfFirst, indexOfLast);
+
+  const totalPages = Math.ceil(filteredList.length / rowsPerPage);
+
+  const goToPage = (page: number) => {
+    if (page >= 1 && page <= totalPages) setCurrentPage(page);
+  };
+
+  // --------------------------------------------
+  // MODAL LOGIC (unchanged)
+  // --------------------------------------------
+  const [showModal, setShowModal] = useState(false);
+  const [modalType, setModalType] = useState<"credit" | "debit" | null>(null);
+  const [amount, setAmount] = useState("");
+  const [reason, setReason] = useState("");
+  const [selectedUser, setSelectedUser] = useState("");
+
+  const openModal = (type: "credit" | "debit") => {
     setModalType(type);
     setShowModal(true);
   };
@@ -77,50 +124,42 @@ export const WalletManagement = () => {
   const closeModal = () => {
     setShowModal(false);
     setModalType(null);
-    setSelectedUser('');
-    setUserSearchTerm('');
-    setFilteredUsers([]);
-    setShowUserDropdown(false);
-    setAmount('');
-    setReason('');
+    setAmount("");
+    setReason("");
+    setSelectedUser("");
   };
 
-  const handleSubmit = () => {
-    if (selectedUser && amount && reason) {
-      if (!isMock) {
-        // TODO: Call backend API to credit/debit wallet
-        // axios.post(`${API_BASE_URL}/wallet/${modalType}`, { userId: selectedUser, amount, reason })
-      }
-      console.log(`${modalType}: ₹${amount} for user ${selectedUser}. Reason: ${reason}`);
-      closeModal();
-    }
-  };
+  const handleSubmit = async () => {
+    if (!selectedUser || !amount || !reason) return;
 
-  const lowBalanceUsers = users.filter(user => user.walletBalance < 100);
-
-  // User search functionality
-  const handleUserSearch = (searchTerm: string) => {
-    setUserSearchTerm(searchTerm);
-    if (searchTerm.length > 0) {
-      const filtered = users.filter(user => 
-        user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.email?.toLowerCase().includes(searchTerm.toLowerCase())
+    try {
+      const res = await axios.post(
+        "https://api.new.techember.in/api/wallet/wallet-txn",
+        {
+          userId: selectedUser,
+          amount: Number(amount),
+          type: modalType,
+          reason,
+        },
+        { headers: { token } },
       );
-      setFilteredUsers(filtered);
-      setShowUserDropdown(true);
-    } else {
-      setFilteredUsers([]);
-      setShowUserDropdown(false);
+
+      const newTxn = res.data?.data;
+      if (newTxn) {
+        setRequests((prev) => [newTxn, ...prev]);
+        setFilteredList((prev) => [newTxn, ...prev]);
+      }
+
+      closeModal();
+    } catch (error) {
+      console.error("Wallet Transaction Error:", error);
+      alert("Wallet transaction failed.");
     }
   };
 
-  const selectUser = (user: any) => {
-    setSelectedUser(user.id);
-    setUserSearchTerm(`${user.name} (${user.id}) - ₹${user.walletBalance.toFixed(2)}`);
-    setShowUserDropdown(false);
-  };
-
+  // --------------------------------------------
+  // UI
+  // --------------------------------------------
   if (loading) {
     return (
       <AdminLayout title="Wallet Management">
@@ -132,180 +171,213 @@ export const WalletManagement = () => {
   return (
     <AdminLayout title="Wallet Management">
       <div className="p-6 space-y-6">
-        {/* Quick Actions */}
-        <div className="admin-card p-6">
-          <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
-          <div className="flex gap-4">
-            <button
-              onClick={() => openModal('credit')}
-              className="btn-primary flex items-center gap-2"
-            >
-              <PlusIcon className="h-4 w-4" />
-              Credit Wallet
-            </button>
-            <button
-              onClick={() => openModal('debit')}
-              className="btn-secondary flex items-center gap-2"
-            >
-              <MinusIcon className="h-4 w-4" />
-              Debit Wallet
-            </button>
-          </div>
+        {/* ⭐ FILTER SECTION */}
+        <div
+          className="admin-card p-4 flex justify-between items-center cursor-pointer"
+          onClick={() => setIsFilterOpen(!isFilterOpen)}
+        >
+          <h3 className="text-lg font-semibold">Filters</h3>
+          <span>{isFilterOpen ? "▲" : "▼"}</span>
         </div>
 
-        {/* Low Balance Alerts */}
-        {lowBalanceUsers.length > 0 && (
-          <div className="admin-card p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <ExclamationTriangleIcon className="h-5 w-5 text-warning" />
-              <h3 className="text-lg font-semibold text-warning">Low Balance Alerts</h3>
+        {isFilterOpen && (
+          <div className="admin-card p-6 space-y-4">
+            {/* User ID */}
+            <div>
+              <label className="text-sm text-muted-foreground">User ID</label>
+              <input
+                type="text"
+                value={userId}
+                onChange={(e) => setUserId(e.target.value)}
+                className="w-full border p-2 rounded-lg"
+                placeholder="Search userId"
+              />
             </div>
-            <div className="space-y-3">
-              {lowBalanceUsers.map((user) => (
-                <div key={user.id} className="flex items-center justify-between p-3 bg-warning/5 border border-warning/20 rounded-lg">
-                  <div>
-                    <p className="font-medium">{user.name}</p>
-                    <p className="text-sm text-muted-foreground">Balance: ₹{user.walletBalance.toFixed(2)}</p>
-                  </div>
-                  <button
-                    onClick={() => {
-                      setSelectedUser(user.id);
-                      openModal('credit');
-                    }}
-                    className="btn-primary text-sm"
-                  >
-                    Top Up
-                  </button>
-                </div>
-              ))}
+
+            {/* Transaction Type */}
+            <div>
+              <label className="text-sm text-muted-foreground">
+                Transaction Type
+              </label>
+              <select
+                value={txnType}
+                onChange={(e) => setTxnType(e.target.value)}
+                className="w-full border p-2 rounded-lg"
+              >
+                <option value="">All</option>
+                <option value="credit">Credit</option>
+                <option value="debit">Debit</option>
+              </select>
+            </div>
+
+            {/* Date Filters */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm text-muted-foreground">
+                  From Date
+                </label>
+                <input
+                  type="date"
+                  value={fromDate}
+                  onChange={(e) => setFromDate(e.target.value)}
+                  className="w-full border p-2 rounded-lg"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm text-muted-foreground">To Date</label>
+                <input
+                  type="date"
+                  value={toDate}
+                  onChange={(e) => setToDate(e.target.value)}
+                  className="w-full border p-2 rounded-lg"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button onClick={applyFilters} className="btn-primary flex-1">
+                Apply Filters
+              </button>
+              <button onClick={resetFilters} className="btn-secondary flex-1">
+                Reset
+              </button>
             </div>
           </div>
         )}
 
-        {/* Top-up Requests */}
+        {/* ⭐ Quick Actions (unchanged) */}
+        <div className="admin-card p-6">
+          <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
+          <div className="flex gap-4">
+            <button
+              onClick={() => openModal("credit")}
+              className="btn-primary flex items-center gap-2"
+            >
+              <PlusIcon className="h-4 w-4" /> Credit Wallet
+            </button>
+
+            <button
+              onClick={() => openModal("debit")}
+              className="btn-secondary flex items-center gap-2"
+            >
+              <MinusIcon className="h-4 w-4" /> Debit Wallet
+            </button>
+          </div>
+        </div>
+
+        {/* ⭐ WALLET HISTORY TABLE */}
         <div className="admin-card">
           <div className="p-6 border-b border-border">
-            <h3 className="text-lg font-semibold">Wallet Top-up Requests</h3>
+            <h3 className="text-lg font-semibold">Wallet History</h3>
           </div>
-          
+
           <div className="overflow-x-auto">
             <table className="admin-table">
               <thead>
                 <tr>
-                  <th>Request ID</th>
-                  <th>User</th>
+                  <th>Txn ID</th>
+                  <th>User ID</th>
                   <th>Amount</th>
-                  <th>Payment Mode</th>
-                  <th>Status</th>
-                  <th>Requested At</th>
-                  <th>Actions</th>
+                  <th>Type</th>
+                  <th>Reason</th>
+                  <th>Date</th>
                 </tr>
               </thead>
+
               <tbody>
-                {requests.map((request) => (
-                  <tr key={request.id}>
-                    <td className="font-mono">{request.id}</td>
+                {currentRows.map((txn: any) => (
+                  <tr key={txn._id}>
+                    <td className="font-mono">{txn.txnId}</td>
+                    <td className="font-mono">{txn.userId}</td>
+                    <td>₹{txn.txnAmount}</td>
+                    <td className="capitalize">{txn.txnType}</td>
+                    <td>{txn.txnDesc}</td>
                     <td>
-                      <div>
-                        <div className="font-medium">{request.userName}</div>
-                        <div className="text-sm text-muted-foreground">{request.userId}</div>
-                      </div>
-                    </td>
-                    <td className="font-mono">₹{request.amount.toFixed(2)}</td>
-                    <td>{request.paymentMode}</td>
-                    <td>
-                      <span className={`badge-${request.status === 'pending' ? 'warning' : request.status === 'approved' ? 'success' : 'error'} capitalize`}>
-                        {request.status}
-                      </span>
-                    </td>
-                    <td>{new Date(request.requestedAt).toLocaleDateString()}</td>
-                    <td>
-                      {request.status === 'pending' && (
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => handleApprove(request.id)}
-                            className="p-1 text-success hover:bg-success/10 rounded"
-                            title="Approve"
-                          >
-                            <CheckCircleIcon className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => handleReject(request.id)}
-                            className="p-1 text-destructive hover:bg-destructive/10 rounded"
-                            title="Reject"
-                          >
-                            <XCircleIcon className="h-4 w-4" />
-                          </button>
-                        </div>
-                      )}
+                      {txn.createdAt
+                        ? new Date(txn.createdAt).toLocaleDateString()
+                        : "-"}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+
+          {/* ⭐ PAGINATION */}
+          <div className="p-4 flex justify-center items-center gap-2">
+            <button
+              className="px-3 py-1 border rounded disabled:opacity-50"
+              onClick={() => goToPage(currentPage - 1)}
+              disabled={currentPage === 1}
+            >
+              Previous
+            </button>
+
+            {[...Array(totalPages)].map((_, i) => (
+              <button
+                key={i}
+                onClick={() => goToPage(i + 1)}
+                className={`px-3 py-1 border rounded ${
+                  currentPage === i + 1 ? "bg-blue-500 text-white" : ""
+                }`}
+              >
+                {i + 1}
+              </button>
+            ))}
+
+            <button
+              className="px-3 py-1 border rounded disabled:opacity-50"
+              onClick={() => goToPage(currentPage + 1)}
+              disabled={currentPage === totalPages}
+            >
+              Next
+            </button>
+          </div>
         </div>
 
-        {/* Manual Credit/Debit Modal */}
+        {/* MODAL (unchanged) */}
         {showModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
             <div className="bg-card p-6 rounded-xl max-w-md w-full mx-4">
               <h3 className="text-lg font-semibold mb-4">
-                {modalType === 'credit' ? 'Credit Wallet' : 'Debit Wallet'}
+                {modalType === "credit" ? "Credit Wallet" : "Debit Wallet"}
               </h3>
-              
+
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium mb-2">Search User</label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={userSearchTerm}
-                      onChange={(e) => handleUserSearch(e.target.value)}
-                      onFocus={() => userSearchTerm.length > 0 && setShowUserDropdown(true)}
-                      placeholder="Search by name, ID, or email..."
-                      className="w-full p-3 border border-border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                    />
-                    {showUserDropdown && filteredUsers.length > 0 && (
-                      <div className="absolute z-10 w-full mt-1 bg-card border border-border rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                        {filteredUsers.map((user) => (
-                          <div
-                            key={user.id}
-                            onClick={() => selectUser(user)}
-                            className="p-3 hover:bg-accent cursor-pointer border-b border-border last:border-b-0"
-                          >
-                            <div className="font-medium">{user.name}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {user.id} - ₹{user.walletBalance.toFixed(2)}
-                            </div>
-                            {user.email && (
-                              <div className="text-xs text-muted-foreground">{user.email}</div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium mb-2">Amount</label>
+                  <label className="block text-sm font-medium mb-2">
+                    User ID
+                  </label>
                   <input
-                    type="number"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                    placeholder="Enter amount..."
-                    className="w-full p-3 border border-border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    type="text"
+                    value={selectedUser}
+                    onChange={(e) => setSelectedUser(e.target.value)}
+                    className="w-full p-3 border rounded-lg"
+                    placeholder="Enter userId"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium mb-2">Reason</label>
+                  <label className="block text-sm font-medium mb-2">
+                    Amount
+                  </label>
+                  <input
+                    type="number"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    className="w-full p-3 border rounded-lg"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Reason
+                  </label>
                   <textarea
                     value={reason}
                     onChange={(e) => setReason(e.target.value)}
-                    placeholder="Enter reason..."
-                    className="w-full p-3 border border-border rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary h-24 resize-none"
+                    className="w-full p-3 border rounded-lg h-24"
                   />
                 </div>
               </div>
@@ -314,12 +386,13 @@ export const WalletManagement = () => {
                 <button onClick={closeModal} className="btn-secondary">
                   Cancel
                 </button>
+
                 <button
                   onClick={handleSubmit}
                   disabled={!selectedUser || !amount || !reason}
-                  className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="btn-primary disabled:opacity-50"
                 >
-                  {modalType === 'credit' ? 'Credit' : 'Debit'} Wallet
+                  {modalType === "credit" ? "Credit" : "Debit"} Wallet
                 </button>
               </div>
             </div>
